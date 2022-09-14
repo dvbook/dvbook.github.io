@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <title>DVground - SV Classes</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+  <div class="topnavwrap">
+    <div class="topnav">
+      <a style="color:#04AA6D;font-weight:bold;" href="../index.html">DVground</a>
+      <a href="digital.html">Digital</a>
+      <a class="DVground" href="sv.html">SystemVerilog</a>
+      <a href="uvm.html">UVM</a>
+      <a href="perl.html">PERL</a>
+      <a href="others.html">Others</a>
+    </div>
+  </div>
+  <div class="contentwrap">
+    <div class="leftnav">
+      <a href="sv.html">Introduction</a>
+      <a class="page_now" href="sv_classes.html">Classes</a>
+      <a href="#">&nbsp</a>
+    </div>
+    <div class="rightnav">
+      <a href="#casting">Casting</a>
+    </div>
+    <div class="contentarea">
+      <section id="constructor">
+      </section>
+      <section id="static">
+      </section>
+      <section id="inheritance">
+      </section>
+      <section id="this">
+      </section>
+      <section id="casting">
+        <h2>Dynamic Casting in SystemVerilog</h2>
+        <p>Dynamic Casting in SystemVerilog</p>
+        <div class="codewrap">
+          <code>
+            <span class="keyword">class</span> parentclass;<br>
+            &nbsp&nbsp<span class="keyword">int</span> A = 1;<br>
+            &nbsp&nbsp<span class="keyword">int</span> B = 2;<br>
+            <br>
+            &nbsp&nbsp<span class="keyword">function void</span> printA;<br>
+            &nbsp&nbsp&nbsp&nbsp$display(<span class="quotes">"parentclass::A is %d"</span>, A);<br>
+            &nbsp&nbsp<span class="keyword">endfunction</span> : printA<br>
+            <br>
+            &nbsp&nbspvirtual function void printB;<br>
+            &nbsp&nbsp&nbsp&nbsp$display("parentclass::B is %d", B);<br>
+            &nbsp&nbspendfunction : printB<br>
+            endclass : parentclass<br>
+            <br>
+            class childclass extends parentclass;<br>
+            &nbsp&nbspint A = 3;<br>
+            &nbsp&nbspint B = 4;<br>
+            &nbsp&nbspint C = 5;<br>
+            &nbsp&nbspint D = 6;<br>
+            <br>
+            &nbsp&nbspfunction void printA;<br>
+            &nbsp&nbsp&nbsp&nbsp$display("childclass::A is %d", A);<br>
+            &nbsp&nbspendfunction: printA<br>
+            <br>
+            &nbsp&nbspvirtual function void printB;<br>
+            &nbsp&nbsp&nbsp&nbsp$display("childclass::B is %d", B);<br>
+            &nbsp&nbspendfunction : printB<br>
+            &nbsp&nbsp<br>
+            &nbsp&nbspfunction void printC;<br>
+            &nbsp&nbsp&nbsp&nbsp$display("childclass::C is %d", C);<br>
+            &nbsp&nbspendfunction: printC<br>
+            <br>
+            &nbsp&nbspvirtual function void printD;<br>
+            &nbsp&nbsp&nbsp&nbsp$display("childclass::D is %d", D);<br>
+            &nbsp&nbspendfunction : printD<br>
+            endclass : childclass<br>
+            <br>
+            module top;<br>
+            &nbsp&nbspinitial begin<br>
+            &nbsp&nbsp&nbsp&nbspchildclass child_h1 = new();<br>
+            &nbsp&nbsp&nbsp&nbspchildclass child_h2;<br>
+            &nbsp&nbsp&nbsp&nbspchildclass child_h3;<br>
+            &nbsp&nbsp&nbsp&nbspchildclass child_h4;<br>
+            &nbsp&nbsp&nbsp&nbspparentclass parent_h;<br>
+            <br>
+            &nbsp&nbsp&nbsp&nbspchild_h1.printA; //output = 3<br>
+            &nbsp&nbsp&nbsp&nbspchild_h1.printB; //output = 4<br>
+            &nbsp&nbsp&nbsp&nbspchild_h1.printC; //output = 5<br>
+            &nbsp&nbsp&nbsp&nbspchild_h1.printD; //output = 6<br>
+            <br>
+            &nbsp&nbsp&nbsp&nbspparent_h = child_h1;<br>
+            &nbsp&nbsp&nbsp&nbspparent_h.printA; //output = 1<br>
+            &nbsp&nbsp&nbsp&nbspparent_h.printB; //output = 4<br>
+            &nbsp&nbsp&nbsp&nbsp//parent_h.printC; //output = ERROR<br>
+            &nbsp&nbsp&nbsp&nbsp//parent_h.printD; //output = ERROR<br>
+            <br>
+            &nbsp&nbsp&nbsp&nbsp//child_h2 = parent_h; //ERROR<br>
+            &nbsp&nbsp&nbsp&nbsp$cast(child_h2, parent_h);<br>
+            &nbsp&nbsp&nbsp&nbspchild_h2.printA; //output = 3<br>
+            &nbsp&nbsp&nbsp&nbspchild_h2.printB; //output = 4<br>
+            &nbsp&nbsp&nbsp&nbspchild_h2.printC; //output = 5<br>
+            &nbsp&nbsp&nbsp&nbspchild_h2.printD; //output = 6<br>
+            &nbsp&nbsp&nbsp&nbsp<br>
+            &nbsp&nbsp&nbsp&nbspchild_h3 = child_h1;<br>
+            &nbsp&nbsp&nbsp&nbspchild_h3.printA; //output = 3<br>
+            &nbsp&nbsp&nbsp&nbspchild_h3.printB; //output = 4<br>
+            &nbsp&nbsp&nbsp&nbspchild_h3.printC; //output = 5<br>
+            &nbsp&nbsp&nbsp&nbspchild_h3.printD; //output = 6<br>
+            <br>
+            &nbsp&nbsp&nbsp&nbspchild_h4 = child_h2;<br>
+            &nbsp&nbsp&nbsp&nbspchild_h4.printA; //output = 3<br>
+            &nbsp&nbsp&nbsp&nbspchild_h4.printB; //output = 4<br>
+            &nbsp&nbsp&nbsp&nbspchild_h4.printC; //output = 5<br>
+            &nbsp&nbsp&nbsp&nbspchild_h4.printD; //output = 6<br>
+            &nbspend<br>
+            endmodule : top<br>
+          </code>
+        </div>
+        <p>Output of above code:</p>
+        <div class="codewrap">
+          <code>
+            childclass::A is 3<br>
+            childclass::B is 4<br>
+            childclass::C is 5<br>
+            childclass::D is 6<br>
+            parentclass::A is 1<br>
+            childclass::B is 4<br>
+            childclass::A is 3<br>
+            childclass::B is 4<br>
+            childclass::C is 5<br>
+            childclass::D is 6<br>
+            childclass::A is 3<br>
+            childclass::B is 4<br>
+            childclass::C is 5<br>
+            childclass::D is 6<br>
+            childclass::A is 3<br>
+            childclass::B is 4<br>
+            childclass::C is 5<br>
+            childclass::D is 6<br>
+          </code>
+        </div>
+        <div class="edalink">
+          <a href="https://www.edaplayground.com/x/FM_f" target="_blank">Execute code in EDAPlayground</a>
+        </div>
+      </section>
+      <section id="encap">
+      </section>
+      <section id="abstract">
+      </section>
+      <section id="ploymorph">
+      </section>
+      <section id="scope">
+      </section>
+      <section id="paraclass">
+      </section>
+      <section id="memory">
+      </section>
+      <p>&nbsp</p>
+      <ul id="footer">
+        <li><a href="sv.html">Previous Topic</a></li>
+        <li><a href="#">Next Topic</a></li>
+      </ul>
+    </div>
+  </div>
+  <script type="text/javascript" src="../js/main.js"></script>
+</body>
+
+</html>

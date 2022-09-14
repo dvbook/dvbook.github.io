@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <title>DVground - UVM</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+  <div class="topnavwrap">
+    <div class="topnav">
+      <a style="color:#04AA6D;font-weight:bold;" href="../index.html">DVground</a>
+      <a href="digital.html">Digital</a>
+      <a href="sv.html">SystemVerilog</a>
+      <a class="DVground" href="uvm.html">UVM</a>
+      <a href="perl.html">PERL</a>
+      <a href="others.html">Others</a>
+    </div>
+  </div>
+  <div class="contentwrap">
+    <div class="leftnav">
+      <a href="uvm.html">Introduction</a>
+      <a class="page_now" href="uvm_tlm.html">Transaction Level Modelling (TLM)</a>
+    </div>
+    <div class="rightnav">
+      <a href="#Introduction">Transaction Level Modelling</a>
+      <a href="#blocking_put">uvm_blocking_put_port</a>
+      <a href="#blocking_get">uvm_blocking_get_port</a>
+    </div>
+    <div class="contentarea">
+      <section id="Introduction">
+        <h2>Transaction-Level Modeling (TLM)</h2>
+        <p>Sending data across components is made easy in UVM using Transaction-Level Modeling.</p>
+        <p>In a SystemVerilog testbench, data collected in the monitor is sent to the scoreboard using mailbox mechanism. UVM uses TLM implementation to do same.</p>
+        <p>TLM uses transactions to hold the data. A transaction is an instance of sequence item.</p>
+        <p>Consider two UVM components: sender and receiver. A transaction is filled with data in the sender and this data is used in the receiver. Transporting transactions from sender to receiver is achieved using TLM implementation.</p>
+        <p>For example, in a monitor, pin level data from the interface is stored in sequence item. Using the TLM implementation, this transaction is sent to the scoreboard. Here, monitor is sender and scoreboard is receiver.</p>
+      </section>
+      <section id="blocking_put">
+        <h2>Implementation of TLM blocking put port:</h2>
+        <p>uvm_blocking_put_port is the most basic TLM concept.</p>
+        <p>Its usage starts with declaration of put_port in sender and put_imp in receiver. 'imp' stands for implementation.</p>
+        <p><b>Code in sender:</b> uvm_blocking_put_port#(seq_item) handle_name;</p>
+        <div class="codewrap">
+          <code>
+            <span class="keyword">uvm_blocking_put_port</span><span class="quotes">#</span>(transaction) put_port;
+          </code>
+        </div>
+        <p><b>Code in receiver:</b> uvm_blocking_put_imp#(seq_item, receiver_class) handle_name;</p>
+        <div class="codewrap">
+          <code>
+            <span class="keyword">uvm_blocking_put_imp</span><span class="quotes">#</span>(transaction, txn_receiver) put_imp;
+          </code>
+        </div>
+        <p>uvm_blocking_put_port takes sequence_item as parameter. uvm_blocking_put_imp takes receiver class name along with sequence_item as parameters.</p>
+        <p>Method ‘put’ is called in the run phase of the sender. Instance of sequence item where data is stored is sent as an input to the put method. This put method is implemented as a task in receiver class.</p>
+        <p><b>Code in sender:</b> Calling 'put' in run_phase</p>
+        <div class="codewrap">
+          <code>
+            <span class="keyword">virtual task</span> run_phase(uvm_phase phase);<br>
+            &nbsp&nbsp. . .<br>
+            &nbsp&nbspput_port.<span class="keyword">put</span>(txn);<br>
+            &nbsp&nbsp. . .<br>
+            <span class="keyword">endtask</span> : run_phase<br>
+          </code>
+        </div>
+        <p><b>Code in receiver:</b> Implementing put as a task</p>
+        <div class="codewrap">
+          <code>
+            <span class="keyword">virtual task</span> put(transaction txn);<br>
+            <br>
+            &nbsp&nbsp<span class="comment">//Implementation based on protocol</span><br>
+            <br>
+            <span class="keyword">endtask</span><br>
+          </code>
+        </div>
+        <p>Simulation control is transferred from sender to receiver when the 'put' method is called. Control returns to the sender when all the code inside the task is implemented. This may contain code that span more than a single time slot. ‘put’
+          method will block control until it is completely implemented, hence the name is ‘blocking’.</p>
+        <p>put_port and put_imp are connected using the ‘connect’ call. Connect is called in the connect phase of the class where instances of sender and receiver are accessible. For example, monitor put_port and scoreboard put_imp are connected in
+          the connect phase of the environment.</p>
+        <p><b>Code in environment:</b></p>
+        <div class="codewrap">
+          <code>
+            sender.put_port.<span class="keyword">connect</span>(receiver.put_imp);
+          </code>
+        </div>
+        <br>
+        <h3>Example code of blocking TLM put port:</h3>
+        <h4>Sequence Item:</h4>
+        <p>A simple seq_item with 3 fields is used: wr_data, wr_addr and wr_en</p>
+        <p>Constraint is used so that wr_data is always greater than 8'h111_1111</p>
+        <div class="codewrap">
+          <code>
+            <span class="keyword">class</span> transaction <span class="keyword">extends</span> uvm_sequence_item;<br>
+            <br>
+            &nbsp&nbsp<span class="keyword">rand bit</span> [<span class="green">7</span>:<span class="green">0</span>] wr_data;<br>
+            &nbsp&nbsp<span class="keyword">bit</span> [<span class="green">3</span>:<span class="green">0</span>] wr_addr;<br>
+            &nbsp&nbsp<span class="keyword">bit</span> wr_en;<br>
+            <br>
+            &nbsp&nbsp<span class="quotes">`uvm_object_utils_begin</span>(transaction)<br>
+            &nbsp&nbsp&nbsp&nbsp<span class="quotes">`uvm_field_int</span>(wr_data,UVM_ALL_ON)<br>
+            &nbsp&nbsp&nbsp&nbsp<span class="quotes">`uvm_field_int</span>(wr_addr,UVM_ALL_ON)<br>
+            &nbsp&nbsp&nbsp&nbsp<span class="quotes">`uvm_field_int</span>(wr_en,UVM_ALL_ON)<br>
+            &nbsp&nbsp<span class="quotes">`uvm_object_utils_end</span><br>
+            <br>
+            &nbsp&nbsp<span class="keyword">function new</span>(<span class="keyword">string</span> name = <span class="quotes">"transaction"</span>);<br>
+            &nbsp&nbsp&nbsp&nbsp<span class="keyword">super</span>.<span class="keyword">new</span>(name);<br>
+            &nbsp&nbsp<span class="keyword">endfunction</span><br>
+            <br>
+            &nbsp&nbsp<span class="keyword">constraint</span> limit_wr_data {wr_data > <span class="green">8'b0111_1111</span>;};<br>
+            <br>
+            <span class="keyword">endclass</span><br>
+          </code>
+        </div>
+        <h4>uvm_blocking_put_port</h4>
+        <p>class txn_sender is extended from uvm_component.</p>
+        <p>In this example, 16 packets of seq_item is sent from sender to receiver using uvm_blocking_put_port.</p>
+        <div class="codewrap">
+          <code>
+            <span class="keyword">class</span> txn_sender <span class="keyword">extends</span> uvm_component;<br>
+            &nbsp&nbsp<span class="quotes">`uvm_component_utils</span>(txn_sender)<br>
+            &nbsp&nbsp<br>
+            &nbsp&nbsptransaction txn;<br>
+            &nbsp&nbsp<span class="keyword">uvm_blocking_put_port</span><span class="quotes">#</span>(transaction) put_port; <br>
+            &nbsp&nbsp<br>
+            &nbsp&nbsp<span class="keyword">function new</span>(<span class="keyword">string</span> name, uvm_component parent);<br>
+            &nbsp&nbsp&nbsp&nbsp<span class="keyword">super.new</span>(name, parent);<br>
+            &nbsp&nbsp&nbsp&nbspput_port = <span class="keyword">new</span>(<span class="quotes">"put_port"</span>, <span class="keyword">this</span>); <br>
+            &nbsp&nbsp<span class="keyword">endfunction</span> : <span class="keyword">new</span><br>
+            &nbsp&nbsp<br>
+            &nbsp&nbsp<span class="keyword">virtual task</span> run_phase(uvm_phase phase);<br>
+            &nbsp&nbsp&nbsp&nbspphase.raise_objection(<span class="keyword">this</span>);<br>
+            &nbsp&nbsp&nbsp&nbsp<br>
+            &nbsp&nbsp&nbsp&nbsp$display(<span class="quotes">"\n################### SIM TIME %0t ####################\n"</span>, $time);<br>
+            &nbsp&nbsp&nbsp&nbsp<br>
+            &nbsp&nbsp&nbsp&nbsp<span class="keyword">for</span>(<span class="keyword">int</span> i = <span class="green">0</span>; i < <span class="green">16</span>; i++) <span class="keyword">begin</span><br>
+            &nbsp&nbsp&nbsp&nbsp<br>
+            &nbsp&nbsp&nbsp&nbsp&nbsp&nbsptxn = transaction::type_id::<span class="keyword">create</span>(<span class="quotes">"txn"</span>, <span class="keyword">this</span>);<br>
+            &nbsp&nbsp&nbsp&nbsp&nbsp&nbsptxn.<span class="keyword">randomize</span>();<br>
+            &nbsp&nbsp&nbsp&nbsp&nbsp&nbsptxn.wr_addr = i;<br>
+            &nbsp&nbsp&nbsp&nbsp&nbsp&nbsptxn.wr_en = <span class="green">1</span>;<br>
+            &nbsp&nbsp&nbsp&nbsp&nbsp&nbsp<br>
+            &nbsp&nbsp&nbsp&nbsp&nbsp&nbsp$display(<span class="quotes">":::SENDER::: wr_data %0d wr_addr %0d time %0t"</span>, txn.wr_data, i, $time);<br>
+            &nbsp&nbsp&nbsp&nbsp&nbsp&nbspput_port.<span class="keyword">put</span>(txn);<br>
+            &nbsp&nbsp&nbsp&nbsp&nbsp&nbsp$display(<span class="quotes">"\n################### SIM TIME %0t ####################\n"</span>, $time);<br>
+            &nbsp&nbsp&nbsp&nbspend<br>
+            &nbsp&nbsp&nbsp&nbsp<br>
+            &nbsp&nbsp&nbsp&nbspphase.drop_objection(<span class="keyword">this</span>);<br>
+            &nbsp&nbsp<span class="keyword">endtask</span> : run_phase<br>
+            <br>
+            <span class="keyword">endclass</span> : txn_sender<br>
+          </code>
+        </div>
+        <h4>uvm_blocking_put_imp</h4>
+        <p>'put' method called in sender is implemented in receiver class.</p>
+        <p>A delay element is included in the implementation of 'put' method to show its blocking nature. Simulation control is returned to sender only after this blocking is cleared.</p>
+        <div class="codewrap">
+          <code>
+            <span class="keyword">class</span> txn_receiver <span class="keyword">extends</span> uvm_component;<br>
+            &nbsp&nbsp<span class="quotes">`uvm_component_utils</span>(txn_receiver)<br>
+            <br>
+            &nbsp&nbsptransaction txn;<br>
+            &nbsp&nbsp<span class="keyword">uvm_blocking_put_imp</span><span class="quotes">#</span>(transaction, txn_receiver) put_imp; <br>
+            <br>
+            &nbsp&nbsp<span class="keyword">function new</span>(<span class="keyword">string</span> name, uvm_component parent);<br>
+            &nbsp&nbsp&nbsp&nbsp<span class="keyword">super.new</span>(name, parent);<br>
+            &nbsp&nbsp&nbsp&nbspput_imp = <span class="keyword">new</span>(<span class="quotes">"put_imp"</span>, <span class="keyword">this</span>);<br>
+            &nbsp&nbsp<span class="keyword">endfunction</span> : <span class="keyword">new</span><br>
+            <br>
+            &nbsp&nbsp<span class="keyword">virtual task</span> put(transaction txn);<br>
+            &nbsp&nbsp&nbsp&nbsp$display(<span class="quotes">"::RECEIVER:: BEFORE BLOCKING"</span>);<br>
+            &nbsp&nbsp&nbsp&nbsp$display(<span class="quotes">"::RECEIVER:: wr_data %0d wr_addr %0d time %0t"</span>, txn.wr_data, txn.wr_addr, $time);<br>
+            <br>
+            &nbsp&nbsp&nbsp&nbsp<span class="quotes">#</span><span class="green">5</span>; <span class="comment">//BLOCKING for #5 time</span><br>
+            <br>
+            &nbsp&nbsp&nbsp&nbsp$display(<span class="quotes">"::RECEIVER:: AFTER BLOCKING #5"</span>);<br>
+            &nbsp&nbsp&nbsp&nbsp$display(<span class="quotes">"::RECEIVER:: wr_data %0d wr_addr %0d time %0t"</span>, txn.wr_data, txn.wr_addr, $time);<br>
+            <br>
+            &nbsp&nbsp<span class="keyword">endtask</span><br>
+            <span class="keyword">endclass</span> : txn_receiver<br>
+          </code>
+        </div>
+        <h4>Connecting put_port and put_imp.</h4>
+        <p>Objects of sender and receiver are created, connect() method is used to accomplish connection between port and imp.</p>
+        <p>In general, monitor put_port and scoreboard put_imp are connected in connect phase of environment.</p>
+        <p>In below code, objects of sender and receiver are created and connect() is used to link put_port and put_imp in connect_phase of uvm_test (Skipped environment class to reduce code)</p>
+        <div class="codewrap">
+          <code>
+            <span class="keyword">class</span> test <span class="keyword">extends</span> uvm_test;<br>
+            &nbsp&nbsp<span class="quotes">`uvm_component_utils</span>(test)<br>
+            <br>
+            &nbsp&nbsptxn_sender sender;<br>
+            &nbsp&nbsptxn_receiver receiver;<br>
+            <br>
+            &nbsp&nbsp<span class="keyword">function new</span>(<span class="keyword">string</span> name = <span class="quotes">"test"</span>,uvm_component parent=<span class="keyword">null</span>);<br>
+            &nbsp&nbsp&nbsp&nbsp<span class="keyword">super</span>.<span class="keyword">new</span>(name,parent);<br>
+            &nbsp&nbsp<span class="keyword">endfunction</span> : <span class="keyword">new</span><br>
+            <br>
+            &nbsp&nbsp<span class="keyword">virtual function void</span> build_phase(uvm_phase phase);<br>
+            &nbsp&nbsp&nbsp&nbsp<span class="keyword">super</span>.build_phase(phase);<br>
+            <br>
+            &nbsp&nbsp&nbsp&nbspsender = txn_sender::type_id::<span class="keyword">create</span>(<span class="quotes">"sender"</span>, <span class="keyword">this</span>);<br>
+            &nbsp&nbsp&nbsp&nbspreceiver = txn_receiver::type_id::<span class="keyword">create</span>(<span class="quotes">"receiver"</span>, <span class="keyword">this</span>);<br>
+            &nbsp&nbsp<span class="keyword">endfunction</span> : build_phase<br>
+            <br>
+            &nbsp&nbsp<span class="keyword">function void</span> connect_phase(uvm_phase phase);<br>
+            &nbsp&nbsp&nbsp&nbspsender.put_port.<span class="keyword">connect</span>(receiver.put_imp);<br>
+            &nbsp&nbsp<span class="keyword">endfunction</span> : connect_phase<br>
+            <br>
+            <span class="keyword">endclass</span> : test<br>
+          </code>
+        </div>
+        <h4>Simulation Output</h4>
+        <div class="codewrap">
+          <code>
+            ################### SIM TIME 0 ####################<br>
+            <br>
+            :::SENDER::: wr_data 135 wr_addr 0 time 0<br>
+            ::RECEIVER:: BEFORE BLOCKING<br>
+            ::RECEIVER:: wr_data 135 wr_addr 0 time 0<br>
+            ::RECEIVER:: AFTER BLOCKING #5<br>
+            ::RECEIVER:: wr_data 135 wr_addr 0 time 5<br>
+            <br>
+            ################### SIM TIME 5 ####################<br>
+            <br>
+            :::SENDER::: wr_data 173 wr_addr 1 time 5<br>
+            ::RECEIVER:: BEFORE BLOCKING<br>
+            ::RECEIVER:: wr_data 173 wr_addr 1 time 5<br>
+            ::RECEIVER:: AFTER BLOCKING #5<br>
+            ::RECEIVER:: wr_data 173 wr_addr 1 time 10<br>
+            <br>
+            ################### SIM TIME 10 ####################<br>
+            <br>
+            :::SENDER::: wr_data 191 wr_addr 2 time 10<br>
+            ::RECEIVER:: BEFORE BLOCKING<br>
+            ::RECEIVER:: wr_data 191 wr_addr 2 time 10<br>
+            ::RECEIVER:: AFTER BLOCKING #5<br>
+            ::RECEIVER:: wr_data 191 wr_addr 2 time 15<br>
+            <br>
+            ################### SIM TIME 15 ####################<br>
+            <br>
+            :::SENDER::: wr_data 185 wr_addr 3 time 15<br>
+            ::RECEIVER:: BEFORE BLOCKING<br>
+            ::RECEIVER:: wr_data 185 wr_addr 3 time 15<br>
+            ::RECEIVER:: AFTER BLOCKING #5<br>
+            ::RECEIVER:: wr_data 185 wr_addr 3 time 20<br>
+            <br>
+            ################### SIM TIME 20 ####################<br>
+            <br>
+            :::SENDER::: wr_data 144 wr_addr 4 time 20<br>
+            ::RECEIVER:: BEFORE BLOCKING<br>
+            ::RECEIVER:: wr_data 144 wr_addr 4 time 20<br>
+            ::RECEIVER:: AFTER BLOCKING #5<br>
+            ::RECEIVER:: wr_data 144 wr_addr 4 time 25<br>
+            <br>
+            ################### SIM TIME 25 ####################<br>
+            <br>
+            :::SENDER::: wr_data 203 wr_addr 5 time 25<br>
+            ::RECEIVER:: BEFORE BLOCKING<br>
+            ::RECEIVER:: wr_data 203 wr_addr 5 time 25<br>
+            ::RECEIVER:: AFTER BLOCKING #5<br>
+            ::RECEIVER:: wr_data 203 wr_addr 5 time 30<br>
+            <br>
+            ################### SIM TIME 30 ####################<br>
+            <br>
+            :::SENDER::: wr_data 134 wr_addr 6 time 30<br>
+            ::RECEIVER:: BEFORE BLOCKING<br>
+            ::RECEIVER:: wr_data 134 wr_addr 6 time 30<br>
+            ::RECEIVER:: AFTER BLOCKING #5<br>
+            ::RECEIVER:: wr_data 134 wr_addr 6 time 35<br>
+            <br>
+            ################### SIM TIME 35 ####################<br>
+            <br>
+            :::SENDER::: wr_data 240 wr_addr 7 time 35<br>
+            ::RECEIVER:: BEFORE BLOCKING<br>
+            ::RECEIVER:: wr_data 240 wr_addr 7 time 35<br>
+            ::RECEIVER:: AFTER BLOCKING #5<br>
+            ::RECEIVER:: wr_data 240 wr_addr 7 time 40<br>
+            <br>
+            ################### SIM TIME 40 ####################<br>
+            <br>
+            :::SENDER::: wr_data 201 wr_addr 8 time 40<br>
+            ::RECEIVER:: BEFORE BLOCKING<br>
+            ::RECEIVER:: wr_data 201 wr_addr 8 time 40<br>
+            ::RECEIVER:: AFTER BLOCKING #5<br>
+            ::RECEIVER:: wr_data 201 wr_addr 8 time 45<br>
+            <br>
+            ################### SIM TIME 45 ####################<br>
+            <br>
+            :::SENDER::: wr_data 173 wr_addr 9 time 45<br>
+            ::RECEIVER:: BEFORE BLOCKING<br>
+            ::RECEIVER:: wr_data 173 wr_addr 9 time 45<br>
+            ::RECEIVER:: AFTER BLOCKING #5<br>
+            ::RECEIVER:: wr_data 173 wr_addr 9 time 50<br>
+            <br>
+            ################### SIM TIME 50 ####################<br>
+            <br>
+            :::SENDER::: wr_data 178 wr_addr 10 time 50<br>
+            ::RECEIVER:: BEFORE BLOCKING<br>
+            ::RECEIVER:: wr_data 178 wr_addr 10 time 50<br>
+            ::RECEIVER:: AFTER BLOCKING #5<br>
+            ::RECEIVER:: wr_data 178 wr_addr 10 time 55<br>
+            <br>
+            ################### SIM TIME 55 ####################<br>
+            <br>
+            :::SENDER::: wr_data 151 wr_addr 11 time 55<br>
+            ::RECEIVER:: BEFORE BLOCKING<br>
+            ::RECEIVER:: wr_data 151 wr_addr 11 time 55<br>
+            ::RECEIVER:: AFTER BLOCKING #5<br>
+            ::RECEIVER:: wr_data 151 wr_addr 11 time 60<br>
+            <br>
+            ################### SIM TIME 60 ####################<br>
+            <br>
+            :::SENDER::: wr_data 233 wr_addr 12 time 60<br>
+            ::RECEIVER:: BEFORE BLOCKING<br>
+            ::RECEIVER:: wr_data 233 wr_addr 12 time 60<br>
+            ::RECEIVER:: AFTER BLOCKING #5<br>
+            ::RECEIVER:: wr_data 233 wr_addr 12 time 65<br>
+            <br>
+            ################### SIM TIME 65 ####################<br>
+            <br>
+            :::SENDER::: wr_data 208 wr_addr 13 time 65<br>
+            ::RECEIVER:: BEFORE BLOCKING<br>
+            ::RECEIVER:: wr_data 208 wr_addr 13 time 65<br>
+            ::RECEIVER:: AFTER BLOCKING #5<br>
+            ::RECEIVER:: wr_data 208 wr_addr 13 time 70<br>
+            <br>
+            ################### SIM TIME 70 ####################<br>
+            <br>
+            :::SENDER::: wr_data 255 wr_addr 14 time 70<br>
+            ::RECEIVER:: BEFORE BLOCKING<br>
+            ::RECEIVER:: wr_data 255 wr_addr 14 time 70<br>
+            ::RECEIVER:: AFTER BLOCKING #5<br>
+            ::RECEIVER:: wr_data 255 wr_addr 14 time 75<br>
+            <br>
+            ################### SIM TIME 75 ####################<br>
+            <br>
+            :::SENDER::: wr_data 192 wr_addr 15 time 75<br>
+            ::RECEIVER:: BEFORE BLOCKING<br>
+            ::RECEIVER:: wr_data 192 wr_addr 15 time 75<br>
+            ::RECEIVER:: AFTER BLOCKING #5<br>
+            ::RECEIVER:: wr_data 192 wr_addr 15 time 80<br>
+            <br>
+            ################### SIM TIME 80 ####################<br>
+          </code>
+        </div>
+        <div class="edalink">
+          <a href="https://www.edaplayground.com/x/Gpw3" target="_blank">Execute code in EDAPlayground</a>
+        </div>
+      </section>
+      <br>
+      <section id="blocking_get">
+        <h2>Implementation of TLM blocking get port:</h2>
+        <p>Receiver component requests for transaction using uvm_blocking_get_port. Sender blocks the simulation control until a transaction with valid data is available.</p>
+
+        <p>Its usage starts with declaration of put_port in sender and put_imp in receiver. 'imp' stands for implementation.</p>
+        <p>Code in sender: uvm_blocking_put_port#(seq_item) handle_name;</p>
+        <div class="codewrap">
+          <code>
+            <span class="keyword">uvm_blocking_put_port</span><span class="quotes">#</span>(transaction) put_port;
+          </code>
+        </div>
+      </section>
+      <p>&nbsp</p>
+      <ul id="footer">
+        <li><a href="uvm.html">Previous Topic</a></li>
+        <li><a href="#">Next Topic</a></li>
+      </ul>
+    </div>
+  </div>
+  <script type="text/javascript" src="../js/main.js"></script>
+</body>
+
+</html>
