@@ -141,6 +141,15 @@ html {
 
 
 
+.img_center {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  width: auto;
+}
+
+
+
 .edalink {
   margin-top: 5px;
   border: 2px solid black;

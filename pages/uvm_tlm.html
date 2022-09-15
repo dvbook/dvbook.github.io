@@ -30,7 +30,7 @@
       <a href="#blocking_get">uvm_blocking_get_port</a>
     </div>
     <div class="contentarea">
-      <section id="Introduction">
+      <section id="Introduction"><br>
         <h2>Transaction-Level Modeling (TLM)</h2>
         <p>Sending data across components is made easy in UVM using Transaction-Level Modeling.</p>
         <p>In a SystemVerilog testbench, data collected in the monitor is sent to the scoreboard using mailbox mechanism. UVM uses TLM implementation to do same.</p>
@@ -38,10 +38,10 @@
         <p>Consider two UVM components: sender and receiver. A transaction is filled with data in the sender and this data is used in the receiver. Transporting transactions from sender to receiver is achieved using TLM implementation.</p>
         <p>For example, in a monitor, pin level data from the interface is stored in sequence item. Using the TLM implementation, this transaction is sent to the scoreboard. Here, monitor is sender and scoreboard is receiver.</p>
       </section>
-      <section id="blocking_put">
+      <section id="blocking_put"><br>
         <h2>Implementation of TLM blocking put port:</h2>
         <p>uvm_blocking_put_port is the most basic TLM concept.</p>
-        <p>Its usage starts with declaration of put_port in sender and put_imp in receiver. 'imp' stands for implementation.</p>
+        <p>To start with, declare put_port in sender and put_imp in receiver. 'imp' stands for implementation.</p>
         <p><b>Code in sender:</b> uvm_blocking_put_port#(seq_item) handle_name;</p>
         <div class="codewrap">
           <code>
@@ -54,11 +54,14 @@
             <span class="keyword">uvm_blocking_put_imp</span><span class="quotes">#</span>(transaction, txn_receiver) put_imp;
           </code>
         </div>
-        <p>uvm_blocking_put_port takes sequence_item as parameter. uvm_blocking_put_imp takes receiver class name along with sequence_item as parameters.</p>
-        <p>Method ‘put’ is called in the run phase of the sender. Instance of sequence item where data is stored is sent as an input to the put method. This put method is implemented as a task in receiver class.</p>
-        <p><b>Code in sender:</b> Calling 'put' in run_phase</p>
+        <p>uvm_blocking_put_port takes sequence_item as parameter. uvm_blocking_put_imp takes receiver class name along with sequence_item as parameter.</p>
+        <p>Method ‘put’ is called in the run phase of the sender. Instance of sequence item where data is stored is sent as an input to the 'put' method. This 'put' method is defined as a task in receiver class.</p>
+        <p><b>Code in sender:</b> Calling 'put' in run_phase.</p>
         <div class="codewrap">
           <code>
+            <span class="keyword">uvm_blocking_put_port</span><span class="quotes">#</span>(transaction) put_port;<br>
+            . . .<br>
+            <br>
             <span class="keyword">virtual task</span> run_phase(uvm_phase phase);<br>
             &nbsp&nbsp. . .<br>
             &nbsp&nbspput_port.<span class="keyword">put</span>(txn);<br>
@@ -66,9 +69,12 @@
             <span class="keyword">endtask</span> : run_phase<br>
           </code>
         </div>
-        <p><b>Code in receiver:</b> Implementing put as a task</p>
+        <p><b>Code in receiver:</b> Defining 'put' as a task.</p>
         <div class="codewrap">
           <code>
+            <span class="keyword">uvm_blocking_put_imp</span><span class="quotes">#</span>(transaction, txn_receiver) put_imp;<br>
+            . . .<br>
+            <br>
             <span class="keyword">virtual task</span> put(transaction txn);<br>
             <br>
             &nbsp&nbsp<span class="comment">//Implementation based on protocol</span><br>
@@ -78,7 +84,7 @@
         </div>
         <p>Simulation control is transferred from sender to receiver when the 'put' method is called. Control returns to the sender when all the code inside the task is implemented. This may contain code that span more than a single time slot. ‘put’
           method will block control until it is completely implemented, hence the name is ‘blocking’.</p>
-        <p>put_port and put_imp are connected using the ‘connect’ call. Connect is called in the connect phase of the class where instances of sender and receiver are accessible. For example, monitor put_port and scoreboard put_imp are connected in
+        <p>put_port and put_imp are connected using the ‘connect’ method. It is coded in connect_phase of the class where instances of sender and receiver are accessible. For example, monitor put_port and scoreboard put_imp are connected in
           the connect phase of the environment.</p>
         <p><b>Code in environment:</b></p>
         <div class="codewrap">
@@ -86,6 +92,8 @@
             sender.put_port.<span class="keyword">connect</span>(receiver.put_imp);
           </code>
         </div>
+        <img src="../images/uvm_blocking_put_port.jpg" class="img_center">
+        <p>In above figure, blue square represents a port and red circle represents its imp. Arrow between them represents the direction of data flow.</p>
         <br>
         <h3>Example code of blocking TLM put port:</h3>
         <h4>Sequence Item:</h4>
@@ -351,17 +359,62 @@
         </div>
       </section>
       <br>
-      <section id="blocking_get">
+      <section id="blocking_get"><br>
         <h2>Implementation of TLM blocking get port:</h2>
-        <p>Receiver component requests for transaction using uvm_blocking_get_port. Sender blocks the simulation control until a transaction with valid data is available.</p>
-
-        <p>Its usage starts with declaration of put_port in sender and put_imp in receiver. 'imp' stands for implementation.</p>
-        <p>Code in sender: uvm_blocking_put_port#(seq_item) handle_name;</p>
+        <p>In contrast to put_port, get_port is declared in receiver. get_imp is declared in sender.</p>
+        <img src="../images/uvm_blocking_get_port.jpg" class="img_center">
+        <p>Blue square in above figure indicates get_port and it is declared in receiver. Red circle indicates get_imp and it is declared in sender.</p>
+        <p>Algorithmically, receiver requests for data and sender sends it. Sender blocks simulation if data is not immediately available.</p>
+        <p>To start with, declare get_port in receiver and get_imp in sender.</p>
+        <p><b>Code in receiver:</b> uvm_blocking_get_port#(seq_item) handle_name;</p>
         <div class="codewrap">
           <code>
-            <span class="keyword">uvm_blocking_put_port</span><span class="quotes">#</span>(transaction) put_port;
+            <span class="keyword">uvm_blocking_get_port</span><span class="quotes">#</span>(transaction) get_port;
           </code>
         </div>
+        <p><b>Code in sender:</b> uvm_blocking_get_imp#(seq_item, receiver_class) handle_name;</p>
+        <div class="codewrap">
+          <code>
+            <span class="keyword">uvm_blocking_get_imp</span><span class="quotes">#</span>(transaction, txn_sender) get_imp;
+          </code>
+        </div>
+        <p>uvm_blocking_get_port takes sequence_item as parameter. uvm_blocking_get_imp takes sender class name along with sequence_item as parameter.</p>
+        <p>Method ‘get’ is called in the run phase of the receiver class and it is defined as a task in the sender class. It blocks simulation control until all the code inside it is implemented. This reflects the blocking nature of uvm_blocking_get_port - uvm_blocking_get_imp duo.</p>
+        <p><b>Code in receiver:</b> calling 'get' in run_phase.</p>
+        <div class="codewrap">
+          <code>
+            <span class="keyword">uvm_blocking_get_port</span><span class="quotes">#</span>(transaction) get_port;<br>
+            . . .<br>
+            <br>
+            <span class="keyword">virtual task</span> run_phase(uvm_phase phase);<br>
+            &nbsp&nbsp. . .<br>
+            &nbsp&nbspget_port.<span class="keyword">get</span>(txn);<br>
+            &nbsp&nbsp. . .<br>
+            <span class="keyword">endtask</span> : run_phase<br>
+          </code>
+        </div>
+        <p><b>Code in sender:</b> Defining 'get' as a task.</p>
+        <div class="codewrap">
+          <code>
+            <span class="keyword">uvm_blocking_get_imp</span><span class="quotes">#</span>(transaction, txn_sender) get_imp;<br>
+            . . .<br>
+            <br>
+            <span class="keyword">virtual task</span> get(<span class="keyword">output</span> transaction txn);<br>
+            <br>
+            &nbsp&nbsp<span class="comment">//Implementation based on protocol</span><br>
+            <br>
+            <span class="keyword">endtask</span><br>
+          </code>
+        </div>
+        <p>'connect' method is coded in connect_phase of the class where instances of sender and receiver are accessible.</p>
+        <p><b>Code in environment:</b></p>
+        <div class="codewrap">
+          <code>
+            receiver.get_port.<span class="keyword">connect</span>(sender.get_imp);
+          </code>
+        </div>
+
+
       </section>
       <p>&nbsp</p>
       <ul id="footer">
